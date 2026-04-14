@@ -48,7 +48,7 @@ let state = {
     gachaHistory: [],
     currentEmotions: [],
     chart: null,
-    heatmapRange: 30
+    heatmapMonth: 0  // 0 = 本月, 1 = 上月, 12 = 全年
 };
 
 // ==================== 工具函数 ====================
@@ -404,14 +404,29 @@ function renderHomePage() {
 
 function renderHeatmap() {
     const container = document.getElementById('heatmap');
-    const range = state.heatmapRange;
+    const monthOffset = state.heatmapMonth;
     const days = [];
     const now = new Date();
 
-    for (let i = range - 1; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        days.push(date);
+    let startDate, endDate;
+
+    if (monthOffset === 12) {
+        // 全年：显示过去12个月
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+    } else {
+        // 按月选择：计算该月的开始和结束日期
+        const targetMonth = now.getMonth() - monthOffset;
+        const targetYear = now.getFullYear() + Math.floor(targetMonth / 12);
+        const adjustedMonth = ((targetMonth % 12) + 12) % 12;
+
+        startDate = new Date(targetYear, adjustedMonth, 1);
+        endDate = new Date(targetYear, adjustedMonth + 1, 0); // 该月最后一天
+    }
+
+    // 生成该月所有日期
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        days.push(new Date(d));
     }
 
     container.innerHTML = days.map(date => {
@@ -430,14 +445,15 @@ function renderHeatmap() {
         return `<div class="heatmap-cell" style="background: ${bgColor}" data-tooltip="${tooltip}"></div>`;
     }).join('');
 
-    document.querySelectorAll('.section-tabs .tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.section-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            state.heatmapRange = parseInt(btn.dataset.range);
+    // 绑定月份选择器事件
+    const monthSelect = document.getElementById('heatmap-month');
+    if (monthSelect) {
+        monthSelect.value = monthOffset.toString();
+        monthSelect.onchange = function() {
+            state.heatmapMonth = parseInt(this.value);
             renderHeatmap();
-        });
-    });
+        };
+    }
 }
 
 function renderEmotionChart() {
