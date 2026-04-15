@@ -452,6 +452,7 @@ function renderHeatmap() {
         monthSelect.onchange = function() {
             state.heatmapMonth = parseInt(this.value);
             renderHeatmap();
+            renderEmotionChart();
         };
     }
 }
@@ -462,7 +463,30 @@ function renderEmotionChart() {
     const emotionCounts = {};
     Object.keys(CONFIG.EMOTIONS).forEach(e => emotionCounts[e] = 0);
 
-    state.memories.forEach(m => {
+    // 根据当前月份筛选记忆
+    const monthOffset = state.heatmapMonth;
+    const now = new Date();
+    let startDate, endDate;
+
+    if (monthOffset === 12) {
+        // 全年：显示过去12个月
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+    } else {
+        const targetMonth = now.getMonth() - monthOffset;
+        const targetYear = now.getFullYear() + Math.floor(targetMonth / 12);
+        const adjustedMonth = ((targetMonth % 12) + 12) % 12;
+        startDate = new Date(targetYear, adjustedMonth, 1);
+        endDate = new Date(targetYear, adjustedMonth + 1, 0);
+    }
+
+    // 筛选指定月份范围内的记忆
+    const filteredMemories = state.memories.filter(m => {
+        const date = new Date(m.timestamp);
+        return date >= startDate && date <= endDate;
+    });
+
+    filteredMemories.forEach(m => {
         const dominant = getDominantEmotion(m.emotions);
         if (dominant) {
             emotionCounts[dominant.type]++;
